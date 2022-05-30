@@ -1,4 +1,4 @@
-import { tokens } from './helper'
+import { tokens, EVM_REVERT } from './helper'
 
 const Token = artifacts.require('./Token');
 
@@ -50,18 +50,47 @@ contract('Token', ([deployer, receiver]) => {
     describe('sending tokens', () => {
         let result
         let amount
-        beforeEach(async () => {
-            amount = tokens(100);
-            result = await token.transfer(receiver, amount, { from: deployer })
-        })
-        
-        it('transfer token balance', async () => {
-            let balanceOf;
 
-            balanceOf = await token.balanceOf(deployer);
-            balanceOf.toString().should.equal(tokens(999900).toString());
-            balanceOf = await token.balanceOf(receiver);
-            balanceOf.toString().should.equal(tokens(100).toString());        
+        describe('success', () => {
+            beforeEach(async () => {
+                amount = tokens(100);
+                result = await token.transfer(receiver, amount, { from: deployer })
+            })
+            
+            it('transfer token balance', async () => {
+                let balanceOf;
+    
+                balanceOf = await token.balanceOf(deployer);
+                balanceOf.toString().should.equal(tokens(999900).toString());
+                balanceOf = await token.balanceOf(receiver);
+                balanceOf.toString().should.equal(tokens(100).toString());        
+            })
+    
+            it('emits a transfer event', async () => {
+                const log = result.logs[0]
+                log.event.should.eq('Transfer')
+                const event = log.args
+                // console.log(event)
+                event.from.toString().should.equal(deployer, 'from is correct')
+                event.to.toString().should.equal(receiver, 'to is correct')
+                event._value.toString().should.equal(amount.toString(), 'value is correct')
+            })
+        })
+
+        describe('failure', async () => {
+            it('rejects insufficient balance', async () => {
+                let invalidAmount;
+                invalidAmount = tokens(100000000); // greater than total supply
+                await token.transfer(receiver, invalidAmount, { from: deployer }).should.be.rejectedWith(EVM_REVERT)
+
+                // Transfer token from account with 0 tokens
+                invalidAmount = tokens(10);
+                await token.transfer(deployer, invalidAmount, { from: receiver }).should.be.rejectedWith(EVM_REVERT)
+            })
+
+            it('reject invalid recipients', async () => {
+                await token.transfer(0x0, amount, { from: deployer }).should.be.rejected
+            })
         })
     })
 })
