@@ -1,3 +1,4 @@
+import { result } from 'lodash';
 import { tokens, ether, EVM_REVERT, ETHER_ADDRESS } from './helper';
 
 const Exchange = artifacts.require('./Exchange');
@@ -194,6 +195,44 @@ contract('Exchange', ([deployer, feeAccount, user1]) => {
         it('returns user ether balance', async () => {
             const result = await exchange.balanceOf(ETHER_ADDRESS, user1)
             result.toString().should.equal(ether(1).toString())
+        })
+    })
+
+    describe('making orders', () => {
+        let result
+        beforeEach(async () => {
+            result = await exchange.makeOrder(token.address, tokens(1), ETHER_ADDRESS, ether(1), {from: user1})
+        })
+
+        it('track the newly created order', async() => {
+            const orderCount = await exchange.orderCount()
+            orderCount.toString().should.equal('1');
+        })
+
+        it('tracks the newly created order', async() => {
+            const orderCount = await exchange.orderCount();
+            orderCount.toString().should.equal('1');
+            const order = await exchange.orders('1');
+            order.id.toString().should.equal('1', 'id is correct')
+            order.user.should.equal(user1, 'user is correct')
+            order.tokenGet.should.equal(token.address, 'tokenGet is correct')
+            order.amountGet.toString().should.equal(tokens(1).toString(), 'amountGet is correct')
+            order.tokenGive.should.equal(ETHER_ADDRESS, 'tokenGive is correct')
+            order.amountGive.toString().should.equal(ether(1).toString(), 'amountGive is correct')
+            order.timestamp.toString().length.should.be.at.least(1, 'timestamp is correct')
+        })
+
+        it('emits "order" event', async() => {
+            const log = result.logs[0];
+            log.event.should.eq("Order")
+            const args = log.args
+            args.id.toString().should.equal('1', 'id is correct')
+            args.user.should.equal(user1, 'user is correct')
+            args.tokenGet.should.equal(token.address, 'tokenGet is correct')
+            args.amountGet.toString().should.equal(tokens(1).toString(), 'amountGet is correct')
+            args.tokenGive.should.equal(ETHER_ADDRESS, 'tokenGive is correct')
+            args.amountGive.toString().should.equal(ether(1).toString(), 'amountGive is correct')
+            args.timestamp.toString().length.should.be.at.least(1, 'timestamp is correct')
         })
     })
 })
