@@ -117,7 +117,7 @@ contract Exchange {
     }
 
     function fillOrder(uint256 _id) public {
-        require(_id > 0 && _id < orderCount);
+        require(_id > 0 && _id <= orderCount);
         require(!orderFilled[_id]);
         require(!orderCancelled[_id]);
         _Order storage _order = orders[_id];
