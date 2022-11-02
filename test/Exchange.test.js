@@ -148,7 +148,7 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
         let result;
         let amount;
 
-        describe('success', async () => {
+        describe('success', () => {
             beforeEach(async() => {
                 //Deposit token first
                 amount = tokens(10)
@@ -175,7 +175,7 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
             })
         })
 
-        describe('failure', async() => {
+        describe('failure', () => {
             it('rejects Ether withdrawal', async () => {
                 await exchange.withdrawToken(ETHER_ADDRESS, ether(1), {from: user1}).should.be.rejectedWith(EVM_REVERT)
             })
@@ -252,9 +252,9 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
             orderCount.toString().should.equal('1');
         })
 
-        describe('filling orders', async() => {
+        describe('filling orders', () => {
             let result;
-            describe('success', async() => {
+            describe('success', () => {
                 beforeEach(async() => {
                     result = await exchange.fillOrder('1', { from: user2 })
                 })
@@ -294,7 +294,7 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
                 })
             })
 
-            describe('failure', async() => {
+            describe('failure', () => {
                 it('rejects invalid id', async() => {
                     let invalidId = 9999;
                     await exchange.fillOrder(invalidId, {from: user2}).should.be.rejectedWith(EVM_REVERT)
@@ -315,9 +315,9 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
 
         })
 
-        describe('cancelling order', async () => {
+        describe('cancelling order',  () => {
             let result 
-            describe('success', async() => {
+            describe('success', () => {
                 beforeEach(async () => {
                     result = await exchange.cancelOrder('1', {from: user1})
                 })
@@ -341,7 +341,7 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
                 })
             })
 
-            describe('failure', async() => {
+            describe('failure', () => {
                 it('rejects invalid id', async () => {
                     const invalidOrderId = 99999
                     await exchange.cancelOrder(invalidOrderId, {from: user1}).should.be.rejectedWith(EVM_REVERT)

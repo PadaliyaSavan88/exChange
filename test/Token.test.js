@@ -77,7 +77,7 @@ contract('Token', ([deployer, receiver, exchange]) => {
             })
         })
 
-        describe('failure', async () => {
+        describe('failure', () => {
             it('rejects insufficient balance', async () => {
                 let invalidAmount;
                 invalidAmount = tokens(100000000); // greater than total supply
@@ -165,7 +165,7 @@ contract('Token', ([deployer, receiver, exchange]) => {
             })
         })
 
-        describe('failure', async () => {
+        describe('failure', () => {
             it('rejects insufficient balance', async () => {
                 let invalidAmount;
                 invalidAmount = tokens(100000000); // greater than total supply
