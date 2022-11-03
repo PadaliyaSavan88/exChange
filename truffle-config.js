@@ -49,7 +49,7 @@ module.exports = {
 
   // Contract configurations
   contracts_directory: './src/contracts',
-  contracts_builddirectory: './src/abis',
+  contracts_build_directory: './src/abis',
 
   // Set default mocha options here, use special reporters etc.
   mocha: {
