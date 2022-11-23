@@ -8,7 +8,10 @@ contract Exchange {
 
     // Variables
     address public feeAccount; // account to receive fees
-    uint256 public feePercent; // fee percentage
+    uint256 public feeAmount; // fee amount
+    // uint256 public feePercent; // fee percentage
+    bool public isFeePercentage;
+    address private owner;
     address constant ETHER = address(0);
     mapping(address => mapping(address => uint256)) public tokens;
     mapping(uint256 => _Order) public orders;
@@ -61,17 +64,39 @@ contract Exchange {
         uint256 timestamp;
     }
 
-    constructor (address _feeAccount, uint256 _feePercentage) public {
+    constructor (address _feeAccount, uint256 _feeAmount, bool _isFeePercentage) public {
         feeAccount = _feeAccount;
-        feePercent = _feePercentage;
+        feeAmount = _feeAmount;
+        // feePercent = _feePercentage;
+        isFeePercentage = _isFeePercentage;
+        owner = msg.sender;
     }
 
-    //Fallback: reverts if Ether is sent to the samrt contract by mistake
+    modifier isOwner {
+        require(msg.sender == owner, "Ownable: caller is not the owner");
+        _;
+    }
+
+    //Fallback: reverts if Ether is sent to the smart contract by mistake
     function() external {
         revert();
     }
 
-    function depositeEther() payable public {
+    //Change admin comssion on basis of percentage
+    function changeFeeAmount(uint256 _feeAmount) isOwner public {
+        feeAmount = _feeAmount;  
+    }
+
+    //Change admin fee account
+    function changeFeeAccount(address _feeAccount) isOwner public {
+        feeAccount = _feeAccount;
+    }
+
+    function changeFeeType(bool _isFeePercentage) isOwner public {
+        isFeePercentage = _isFeePercentage;
+    }
+
+    function depositEther() payable public {
         tokens[ETHER][msg.sender] = tokens[ETHER][msg.sender].add(msg.value);
         emit Deposit(ETHER, msg.sender, msg.value, tokens[ETHER][msg.sender]);
     }
@@ -128,7 +153,9 @@ contract Exchange {
     function _trade (uint256 _orderId, address _user, address _tokenGet, uint256 _amountGet, address _tokenGive, uint256 _amountGive) internal {
         //Fee paid by user that fills the order
         //Fees deducted from _amountGet
-        uint256 _feeAmount = _amountGet.mul(feePercent).div(100);
+        uint256 _feeAmount = _amountGet.mul(feeAmount).div(100);
+        // uint256 _feeAmount = _amountGet.mul(feePercent).div(100);
+        _feeAmount = isFeePercentage ? _amountGet.mul(feeAmount).div(100) : feeAmount;
 
         //execute the trade
         tokens[_tokenGet][msg.sender] = tokens[_tokenGet][msg.sender].sub(_amountGet.add(_feeAmount));

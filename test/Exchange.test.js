@@ -1,4 +1,5 @@
-import { tokens, ether, EVM_REVERT, ETHER_ADDRESS } from './helper';
+import { tokens, ether, EVM_REVERT, ETHER_ADDRESS, USDT_ADDRESS } from './helper';
+// import { artifacts } from "truffle"
 
 const Exchange = artifacts.require('./Exchange');
 const Token = artifacts.require('./Token');
@@ -7,10 +8,12 @@ require('chai')
     .use(require('chai-as-promised'))
     .should();
 
-contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
+// eslint-disable-next-line no-undef
+contract('Exchange', ([deployer, feeAccount, user1, user2, newFeeAccount]) => {
     let exchange;
     let token;
     const feePercent = 10;
+    const isFeePercentage = true;
 
     beforeEach(async () => {
         // Deploy Tokens
@@ -20,7 +23,7 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
         token.transfer(user1, tokens(100), { from: deployer });
         
         // Deploy Exchange
-        exchange = await Exchange.new(feeAccount, feePercent);
+        exchange = await Exchange.new(feeAccount, feePercent, isFeePercentage, { from: deployer });
     })
 
     describe('development', () => {
@@ -30,8 +33,13 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
         })
 
         it('tracks the fee percent', async() => {
-            const result = await exchange.feePercent();
+            const result = await exchange.feeAmount();
             result.toString().should.equal(feePercent.toString());
+        })
+
+        it('track the if fee is in percentage', async () => {
+            const result  = await exchange.isFeePercentage();
+            result.toString().should.equal(isFeePercentage.toString());
         })
     })
 
@@ -41,12 +49,41 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
         })
     })
 
+    describe('change fee percentage', () => {
+        let result;
+
+        describe('success', () => {
+            it('check fee percentage change', async () => {
+                await exchange.changeFeeAmount(20);
+                result = await exchange.feeAmount();
+                result.toString().should.equal('20')
+            })
+
+            it('check fee account change', async () => {
+                await exchange.changeFeeAccount(newFeeAccount)
+                result = await exchange.feeAccount();
+                result.should.equal(newFeeAccount);
+            })
+        })
+
+        describe('failure', () => {
+            it('check failure of fee percentage change', async () => {
+                await exchange.changeFeeAmount(20, {from: feeAccount}).should.be.rejectedWith(EVM_REVERT);
+            })
+
+            it('check failure of change fee account', async () => {
+                await exchange.changeFeeAccount(newFeeAccount, {from: feeAccount}).should.be.rejectedWith(EVM_REVERT)
+            })
+        })
+
+    })
+
     describe('depositing ether', () => {
         let result
         let amount
         beforeEach(async () => {
             amount = ether(1)
-            result = await exchange.depositeEther({from: user1, value: amount})
+            result = await exchange.depositEther({from: user1, value: amount})
         })
 
         it('track the Ether deposit', async() => {
@@ -70,7 +107,7 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
 
         beforeEach(async() => {
             amount = ether(1)
-            result = await exchange.depositeEther({from: user1, value: amount})
+            result = await exchange.depositEther({from: user1, value: amount})
         })
 
         describe('success', () => {
@@ -131,16 +168,7 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
                 event.amount.toString().should.equal(tokens(10).toString(), 'amount is correct');
                 event.balance.toString().should.equal(tokens(10).toString(), 'balance is correct');
             })
-        })
 
-        describe('failure', () => {
-            it('rejects Ether deposits', async () => {
-                await exchange.depositeToken(ETHER_ADDRESS, tokens(10), {from: user1}).should.be.rejectedWith(EVM_REVERT);
-            })
-
-            it('fails when no tokens are approved', async () => {
-                await exchange.depositeToken(token.address, tokens(10), { from: user1 }).should.be.rejectedWith(EVM_REVERT);
-            })
         })
     })
 
@@ -188,7 +216,7 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
 
     describe('checking balance', () => {
         beforeEach(async () => {
-            await exchange.depositeEther({from: user1, value: ether(1)})
+            await exchange.depositEther({from: user1, value: ether(1)})
         })
 
         it('returns user ether balance', async () => {
@@ -237,7 +265,7 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
 
     describe('order actions', () => {
         beforeEach(async () => {
-            await exchange.depositeEther({from: user1, value: ether(1)})
+            await exchange.depositEther({from: user1, value: ether(1)})
 
             await token.transfer(user2, tokens(200))
 
@@ -271,7 +299,6 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
                     let feeAccount = await exchange.feeAccount()
                     balance = await exchange.balanceOf(token.address, feeAccount)
                     balance.toString().should.equal(tokens(0.1).toString(), 'feeAccount received fee')
-    
                 })
 
                 it('updates filled orders', async () => {
@@ -302,17 +329,55 @@ contract('Exchange', ([deployer, feeAccount, user1, user2]) => {
 
                 it('rejects already filled orders', async() => {
                     await exchange.fillOrder('1', {from: user2}).should.be.fulfilled
-
                     await exchange.fillOrder('1', {from: user2}).should.be.rejectedWith(EVM_REVERT)
                 })
 
                 it('rejects cancelled orders', async() => {
                     await exchange.cancelOrder('1', {from: user1}).should.be.fulfilled
-
                     await exchange.fillOrder('1', {from: user2}).should.be.rejectedWith(EVM_REVERT)
                 })
             })
 
+        })
+
+        describe('filling orders with different fee types', () => {
+            // let result;
+
+            describe('success', () => {
+                beforeEach(async() => {
+                    console.log(exchange)
+                    await exchange.fillOrder('1', { from: user2 })
+                })
+                // eslint-disable-next-line jest/valid-describe
+                // describe('testing fee in percentage', async() => {
+                //     let balance;
+                //     console.log(exchange)
+                //     balance = await exchange.balanceOf(token.address, user1)
+                //     balance.toString().should.equal(tokens(1).toString(), 'user1 received tokens')
+                //     balance = await exchange.balanceOf(ETHER_ADDRESS, user2)
+                //     balance.toString().should.equal(ether(1).toString(), 'user2 received ether')
+                //     balance = await exchange.balanceOf(ETHER_ADDRESS, user1)
+                //     balance.toString().should.equal('0', 'user2 Ether deducted')
+                //     balance = await exchange.balanceOf(token.address, user2)
+                //     balance.toString().should.equal(tokens(0.9).toString(), 'user2 token deducted with fees applied')
+                //     let feeAccount = await exchange.feeAccount()
+                //     balance = await exchange.balanceOf(token.address, feeAccount)
+                //     balance.toString().should.equal(tokens(0.1).toString(), 'feeAccount received fee')
+                // })
+
+                // eslint-disable-next-line jest/valid-describe
+                describe('testing fee in absolute', async() => {
+                    let balance;
+                    await exchange.changeFeeType(false);
+                    await exchange.changeFeeAmount(0.5);
+
+                    balance = await exchange.balanceOf(token.address, user2)
+                    balance.toString().should.equal(tokens(0.5).toString(), 'user2 token deducted with fees applied')
+                    let feeAccount = await exchange.feeAccount()
+                    balance = await exchange.balanceOf(token.address, feeAccount)
+                    balance.toString().should.equal(tokens(0.5).toString(), 'feeAccount received fee')
+                })
+            })
         })
 
         describe('cancelling order',  () => {
