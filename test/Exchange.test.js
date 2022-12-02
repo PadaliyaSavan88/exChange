@@ -344,39 +344,44 @@ contract('Exchange', ([deployer, feeAccount, user1, user2, newFeeAccount]) => {
             // let result;
 
             describe('success', () => {
-                beforeEach(async() => {
-                    console.log(exchange)
+                it('testing fee in percentage', async() => {
+                    let balance;
                     await exchange.fillOrder('1', { from: user2 })
+                    balance = await exchange.balanceOf(token.address, user1)
+                    balance.toString().should.equal(tokens(1).toString(), 'user1 received tokens')
+                    balance = await exchange.balanceOf(ETHER_ADDRESS, user2)
+                    balance.toString().should.equal(ether(1).toString(), 'user2 received ether')
+                    balance = await exchange.balanceOf(ETHER_ADDRESS, user1)
+                    balance.toString().should.equal('0', 'user2 Ether deducted')
+                    balance = await exchange.balanceOf(token.address, user2)
+                    balance.toString().should.equal(tokens(0.9).toString(), 'user2 token deducted with fees applied')
+                    let feeAccount = await exchange.feeAccount()
+                    balance = await exchange.balanceOf(token.address, feeAccount)
+                    balance.toString().should.equal(tokens(0.1).toString(), 'feeAccount received fee')
                 })
-                // eslint-disable-next-line jest/valid-describe
-                // describe('testing fee in percentage', async() => {
-                //     let balance;
-                //     console.log(exchange)
-                //     balance = await exchange.balanceOf(token.address, user1)
-                //     balance.toString().should.equal(tokens(1).toString(), 'user1 received tokens')
-                //     balance = await exchange.balanceOf(ETHER_ADDRESS, user2)
-                //     balance.toString().should.equal(ether(1).toString(), 'user2 received ether')
-                //     balance = await exchange.balanceOf(ETHER_ADDRESS, user1)
-                //     balance.toString().should.equal('0', 'user2 Ether deducted')
-                //     balance = await exchange.balanceOf(token.address, user2)
-                //     balance.toString().should.equal(tokens(0.9).toString(), 'user2 token deducted with fees applied')
-                //     let feeAccount = await exchange.feeAccount()
-                //     balance = await exchange.balanceOf(token.address, feeAccount)
-                //     balance.toString().should.equal(tokens(0.1).toString(), 'feeAccount received fee')
-                // })
 
-                // eslint-disable-next-line jest/valid-describe
-                describe('testing fee in absolute', async() => {
+                it('testing fee in absolute', async() => {
                     let balance;
                     await exchange.changeFeeType(false);
-                    await exchange.changeFeeAmount(0.5);
+                    await exchange.changeFeeAmount(tokens(0.5));
 
+                    await exchange.fillOrder('1', { from: user2 })
                     balance = await exchange.balanceOf(token.address, user2)
                     balance.toString().should.equal(tokens(0.5).toString(), 'user2 token deducted with fees applied')
                     let feeAccount = await exchange.feeAccount()
                     balance = await exchange.balanceOf(token.address, feeAccount)
                     balance.toString().should.equal(tokens(0.5).toString(), 'feeAccount received fee')
                 })
+            })
+
+            describe('failure', () => {
+                it('failure for if absolute fee amount is greater then trade price', async() => {
+                    await exchange.changeFeeType(false);
+                    await exchange.changeFeeAmount(tokens(1));
+
+                    await exchange.fillOrder('1', { from: user2 }).should.be.rejected
+                })
+
             })
         })
 

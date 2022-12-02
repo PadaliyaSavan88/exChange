@@ -153,10 +153,13 @@ contract Exchange {
     function _trade (uint256 _orderId, address _user, address _tokenGet, uint256 _amountGet, address _tokenGive, uint256 _amountGive) internal {
         //Fee paid by user that fills the order
         //Fees deducted from _amountGet
-        uint256 _feeAmount = _amountGet.mul(feeAmount).div(100);
-        // uint256 _feeAmount = _amountGet.mul(feePercent).div(100);
-        _feeAmount = isFeePercentage ? _amountGet.mul(feeAmount).div(100) : feeAmount;
-
+        uint256 _feeAmount;
+        if(isFeePercentage){
+            _feeAmount = _amountGet.mul(feeAmount).div(100);
+        } else {
+            require(_amountGet > feeAmount);
+            _feeAmount = feeAmount;
+        }
         //execute the trade
         tokens[_tokenGet][msg.sender] = tokens[_tokenGet][msg.sender].sub(_amountGet.add(_feeAmount));
         tokens[_tokenGet][_user] = tokens[_tokenGet][_user].add(_amountGet);
